@@ -1,1018 +1,1097 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>日志文件可视化提取器</title>
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-            color: #333;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-        h1 {
-            text-align: center;
-            color: #2c3e50;
-            margin-bottom: 20px;
-        }
-        .upload-section {
-            text-align: center;
-            padding: 20px;
-            border: 2px dashed #ddd;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            background-color: #f9f9f9;
-        }
-        .file-input {
-            display: none;
-        }
-        .upload-btn {
-            background-color: #3498db;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-        }
-        .upload-btn:hover {
-            background-color: #2980b9;
-        }
-        .selector-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        .selector {
-            flex: 1;
-            min-width: 200px;
-        }
-        .selector-label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-        select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background-color: #fff;
-            font-size: 16px;
-        }
-        .content-display {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 20px;
-            background-color: #fff;
-            min-height: 300px;
-            max-height: 600px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            font-family: monospace;
-            line-height: 1.5;
-        }
-        .metric-chart {
-            margin-top: 20px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            background-color: #fff;
-        }
-        .loading {
-            text-align: center;
-            padding: 20px;
-            display: none;
-        }
-        .loading-spinner {
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #3498db;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .status {
-            text-align: center;
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-        }
-        .success {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .error {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        .hidden {
-            display: none;
-        }
-        .log-info {
-            margin-top: 10px;
-            font-size: 14px;
-            color: #666;
-        }
-        .search-section {
-            margin: 20px 0;
-            padding: 15px;
-            background-color: #f9f9f9;
-            border-radius: 8px;
-            border: 1px solid #eee;
-        }
-        .search-container {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .search-input {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
-        }
-        .search-btn {
-            background-color: #3498db;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 10px 15px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-        }
-        .search-btn:hover {
-            background-color: #2980b9;
-        }
-        .clear-btn {
-            background-color: #e74c3c;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 10px 15px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-        }
-        .clear-btn:hover {
-            background-color: #c0392b;
-        }
-        .results-container {
-            max-height: 300px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 10px;
-            background-color: #fff;
-        }
-        .result-item {
-            margin-bottom: 10px;
-            padding: 10px;
-            border-radius: 4px;
-            background-color: #f5f5f5;
-            position: relative;
-        }
-        .result-item:hover {
-            background-color: #eee;
-        }
-        .result-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        .result-location {
-            color: #3498db;
-        }
-        .result-content {
-            max-height: 100px;
-            overflow-y: auto;
-            padding: 5px;
-            background-color: #fff;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-family: monospace;
-            position: relative;
-        }
-        .result-content-full {
-            max-height: none;
-        }
-        .highlight {
-            background-color: #fff59d;
-            padding: 2px;
-            border-radius: 2px;
-        }
-        .view-btn {
-            background-color: #2ecc71;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 5px 10px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-top: 5px;
-            transition: background-color 0.3s;
-        }
-        .view-btn:hover {
-            background-color: #27ae60;
-        }
-        .expand-btn {
-            background-color: #f39c12;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 5px 10px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-top: 5px;
-            margin-right: 5px;
-            transition: background-color 0.3s;
-        }
-        .expand-btn:hover {
-            background-color: #d35400;
-        }
-        .tab-container {
-            margin-top: 20px;
-        }
-        .tab-buttons {
-            display: flex;
-            border-bottom: 1px solid #ddd;
-        }
-        .tab-button {
-            padding: 10px 20px;
-            cursor: pointer;
-            background-color: #f1f1f1;
-            border: none;
-            outline: none;
-            font-size: 16px;
-        }
-        .tab-button.active {
-            background-color: #3498db;
-            color: white;
-        }
-        .tab-content {
-            padding: 20px 0;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>日志文件可视化提取器</title>
+<style>
+body {
+    font-family: 'Arial', sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f5f5;
+    color: #333;
+}
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+h1 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 20px;
+}
+.upload-section {
+    text-align: center;
+    padding: 20px;
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    background-color: #f9f9f9;
+}
+.file-input {
+    display: none;
+}
+.upload-btn {
+    background-color: #3498db;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+.upload-btn:hover {
+    background-color: #2980b9;
+}
+.selector-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+.selector {
+    flex: 1;
+    min-width: 200px;
+}
+.selector-label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #fff;
+    font-size: 16px;
+}
+.content-display {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 20px;
+    background-color: #fff;
+    min-height: 300px;
+    max-height: 600px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    font-family: monospace;
+    line-height: 1.5;
+}
+.metric-chart {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #fff;
+}
+.loading {
+    text-align: center;
+    padding: 20px;
+    display: none;
+}
+.loading-spinner {
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #3498db;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.status {
+    text-align: center;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+}
+.success {
+    background-color: #d4edda;
+    color: #155724;
+}
+.error {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+.hidden {
+    display: none;
+}
+.log-info {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #666;
+}
+.search-section {
+    margin: 20px 0;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    border: 1px solid #eee;
+}
+.search-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+.search-input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+.search-btn {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+.search-btn:hover {
+    background-color: #2980b9;
+}
+.clear-btn {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+.clear-btn:hover {
+    background-color: #c0392b;
+}
+.results-container {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    background-color: #fff;
+}
+.result-item {
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 4px;
+    background-color: #f5f5f5;
+    position: relative;
+}
+.result-item:hover {
+    background-color: #eee;
+}
+.result-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+.result-location {
+    color: #3498db;
+}
+.result-content {
+    max-height: 100px;
+    overflow-y: auto;
+    padding: 5px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: monospace;
+    position: relative;
+}
+.result-content-full {
+    max-height: none;
+}
+.highlight {
+    background-color: #fff59d;
+    padding: 2px;
+    border-radius: 2px;
+}
+.view-btn {
+    background-color: #2ecc71;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 5px;
+    transition: background-color 0.3s;
+}
+.view-btn:hover {
+    background-color: #27ae60;
+}
+.expand-btn {
+    background-color: #f39c12;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 5px;
+    margin-right: 5px;
+    transition: background-color 0.3s;
+}
+.expand-btn:hover {
+    background-color: #d35400;
+}
+.tab-container {
+    margin-top: 20px;
+}
+.tab-buttons {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+}
+.tab-button {
+    padding: 10px 20px;
+    cursor: pointer;
+    background-color: #f1f1f1;
+    border: none;
+    outline: none;
+    font-size: 16px;
+}
+.tab-button.active {
+    background-color: #3498db;
+    color: white;
+}
+.tab-content {
+    padding: 20px 0;
+}
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>日志文件可视化提取器</h1>
-        
-        <div class="upload-section" id="dropArea">
-            <input type="file" id="fileInput" class="file-input" accept=".log">
-            <button class="upload-btn" id="uploadBtn">选择日志文件</button>
-            <p>或拖放文件到此处</p>
+<div class="container">
+<h1>日志文件可视化提取器</h1>
+
+<div class="upload-section" id="dropArea">
+    <input type="file" id="fileInput" class="file-input" accept=".log">
+    <button class="upload-btn" id="uploadBtn">选择日志文件</button>
+    <p>或拖放文件到此处</p>
+</div>
+
+<div id="statusMessage" class="status hidden"></div>
+
+<div id="loading" class="loading">
+    <div class="loading-spinner"></div>
+    <p>正在解析日志文件...</p>
+</div>
+
+<div id="searchSection" class="search-section hidden">
+    <div class="search-container">
+        <input type="text" id="keywordInput" placeholder="输入关键词（如ERROR）搜索" class="search-input">
+        <button id="searchBtn" class="search-btn">搜索</button>
+        <button id="clearSearchBtn" class="clear-btn">清除</button>
+        <div class="search-options">
+            <label class="option-label">
+                <input type="checkbox" id="onlyResponseCheckbox"> 仅搜索模型响应
+            </label>
         </div>
-        
-        <div id="statusMessage" class="status hidden"></div>
-        
-        <div id="loading" class="loading">
-            <div class="loading-spinner"></div>
-            <p>正在解析日志文件...</p>
+    </div>
+    <div class="search-results" id="searchResults">
+        <h3>搜索结果：</h3>
+        <div id="resultsContainer" class="results-container"></div>
+    </div>
+</div>
+
+<div id="logAnalysis" class="hidden">
+    <div class="log-info" id="logInfo"></div>
+    
+    <div class="selector-container">
+        <div class="selector">
+            <label for="stepSelector" class="selector-label">Step:</label>
+            <select id="stepSelector"></select>
         </div>
-        
-        <div id="searchSection" class="search-section hidden">
-            <div class="search-container">
-                <input type="text" id="keywordInput" placeholder="输入关键词（如ERROR）搜索" class="search-input">
-                <button id="searchBtn" class="search-btn">搜索</button>
-                <button id="clearSearchBtn" class="clear-btn">清除</button>
-            </div>
-            <div class="search-results" id="searchResults">
-                <h3>搜索结果：</h3>
-                <div id="resultsContainer" class="results-container"></div>
-            </div>
+        <div class="selector">
+            <label for="modeSelector" class="selector-label">模式:</label>
+            <select id="modeSelector">
+                <option value="train">Train</option>
+                <option value="eval">Evaluation</option>
+            </select>
         </div>
-        
-        <div id="logAnalysis" class="hidden">
-            <div class="log-info" id="logInfo"></div>
-            
-            <div class="selector-container">
-                <div class="selector">
-                    <label for="stepSelector" class="selector-label">Step:</label>
-                    <select id="stepSelector"></select>
-                </div>
-                <div class="selector">
-                    <label for="modeSelector" class="selector-label">模式:</label>
-                    <select id="modeSelector">
-                        <option value="train">Train</option>
-                        <option value="eval">Evaluation</option>
-                    </select>
-                </div>
-                <div class="selector">
-                    <label for="sampleSelector" class="selector-label">样本编号:</label>
-                    <select id="sampleSelector"></select>
-                </div>
-            </div>
-            <div class="tab-container">
-                <div class="tab-buttons">
-                    <button class="tab-button active" data-tab="content">日志内容</button>
-                    <button class="tab-button" data-tab="metrics">指标可视化</button>
-                </div>
-                <div class="tab-content">
-                    <div id="contentTab" class="content-display"></div>
-                    <div id="metricsTab" class="metric-chart hidden">
-                        <canvas id="metricsChart"></canvas>
-                    </div>
-                </div>
+        <div class="selector">
+            <label for="sampleSelector" class="selector-label">样本编号:</label>
+            <select id="sampleSelector"></select>
+        </div>
+    </div>
+    <div class="tab-container">
+        <div class="tab-buttons">
+            <button class="tab-button active" data-tab="content">日志内容</button>
+            <button class="tab-button" data-tab="metrics">指标可视化</button>
+        </div>
+        <div class="tab-content">
+            <div id="contentTab" class="content-display"></div>
+            <div id="metricsTab" class="metric-chart hidden">
+                <canvas id="metricsChart"></canvas>
             </div>
         </div>
     </div>
+</div>
+</div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // 元素引用
-            const fileInput = document.getElementById('fileInput');
-            const uploadBtn = document.getElementById('uploadBtn');
-            const dropArea = document.getElementById('dropArea');
-            const loading = document.getElementById('loading');
-            const logAnalysis = document.getElementById('logAnalysis');
-            const logInfo = document.getElementById('logInfo');
-            const statusMessage = document.getElementById('statusMessage');
-            const stepSelector = document.getElementById('stepSelector');
-            const modeSelector = document.getElementById('modeSelector');
-            const sampleSelector = document.getElementById('sampleSelector');
-            const contentDisplay = document.getElementById('contentTab');
-            const tabButtons = document.querySelectorAll('.tab-button');
-            const contentTab = document.getElementById('contentTab');
-            const metricsTab = document.getElementById('metricsTab');
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 元素引用
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const dropArea = document.getElementById('dropArea');
+    const loading = document.getElementById('loading');
+    const logAnalysis = document.getElementById('logAnalysis');
+    const logInfo = document.getElementById('logInfo');
+    const statusMessage = document.getElementById('statusMessage');
+    const stepSelector = document.getElementById('stepSelector');
+    const modeSelector = document.getElementById('modeSelector');
+    const sampleSelector = document.getElementById('sampleSelector');
+    const contentDisplay = document.getElementById('contentTab');
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const contentTab = document.getElementById('contentTab');
+    const metricsTab = document.getElementById('metricsTab');
+    
+    // 搜索相关元素
+    const searchSection = document.getElementById('searchSection');
+    const keywordInput = document.getElementById('keywordInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const resultsContainer = document.getElementById('resultsContainer');
+    
+    // 图表引用
+    let metricsChart = null;
+    
+    // 日志数据存储
+    let logData = {
+        steps: {},
+        metrics: [],
+        searchResults: []
+    };
+    
+    // 事件监听器
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', handleFileUpload);
+    
+    // 搜索相关事件监听
+    searchBtn.addEventListener('click', performSearch);
+    clearSearchBtn.addEventListener('click', clearSearch);
+    keywordInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+    
+    // 拖放功能
+    dropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropArea.style.borderColor = '#3498db';
+    });
+    
+    dropArea.addEventListener('dragleave', () => {
+        dropArea.style.borderColor = '#ddd';
+    });
+    
+    dropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropArea.style.borderColor = '#ddd';
+        
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            handleFileUpload();
+        }
+    });
+    
+    // 选择器事件监听
+    stepSelector.addEventListener('change', function() {
+        updateSampleSelector();
+        updateDisplay();
+    });
+    modeSelector.addEventListener('change', updateSampleSelector);
+    sampleSelector.addEventListener('change', updateDisplay);
+    
+    // 标签页搜索相关元素
+    const tabKeywordInput = document.getElementById('tabKeywordInput');
+    const tabSearchBtn = document.getElementById('tabSearchBtn');
+    const tabClearSearchBtn = document.getElementById('tabClearSearchBtn');
+    const tabResultsContainer = document.getElementById('tabResultsContainer');
+    const searchTab = document.getElementById('searchTab');
+    
+    // 标签页搜索相关事件监听
+    tabSearchBtn.addEventListener('click', function() {
+        const keyword = tabKeywordInput.value.trim();
+        performTabSearch(keyword);
+    });
+    
+    tabClearSearchBtn.addEventListener('click', function() {
+        tabKeywordInput.value = '';
+        tabResultsContainer.innerHTML = '';
+    });
+    
+    tabKeywordInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            const keyword = tabKeywordInput.value.trim();
+            performTabSearch(keyword);
+        }
+    });
+    
+    // 响应复选框变化时重新搜索
+    tabOnlyResponseCheckbox.addEventListener('change', function() {
+        const keyword = tabKeywordInput.value.trim();
+        if (keyword) {
+            performTabSearch(keyword);
+        }
+    });
+    
+    onlyResponseCheckbox.addEventListener('change', function() {
+        const keyword = keywordInput.value.trim();
+        if (keyword) {
+            performSearch();
+        }
+    });
+    
+    // 响应复选框变化时重新搜索
+    tabOnlyResponseCheckbox.addEventListener('change', function() {
+        const keyword = tabKeywordInput.value.trim();
+        if (keyword) {
+            performTabSearch(keyword);
+        }
+    });
+    
+    onlyResponseCheckbox.addEventListener('change', function() {
+        const keyword = keywordInput.value.trim();
+        if (keyword) {
+            performSearch();
+        }
+    });
+    
+    // 标签页切换
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
             
-            // 搜索相关元素
-            const searchSection = document.getElementById('searchSection');
-            const keywordInput = document.getElementById('keywordInput');
-            const searchBtn = document.getElementById('searchBtn');
-            const clearSearchBtn = document.getElementById('clearSearchBtn');
-            const resultsContainer = document.getElementById('resultsContainer');
-            
-            // 图表引用
-            let metricsChart = null;
-            
-            // 日志数据存储
-            let logData = {
-                steps: {},
-                metrics: [],
-                searchResults: []
-            };
-            
-            // 事件监听器
-            uploadBtn.addEventListener('click', () => fileInput.click());
-            fileInput.addEventListener('change', handleFileUpload);
-            
-            // 搜索相关事件监听
-            searchBtn.addEventListener('click', performSearch);
-            clearSearchBtn.addEventListener('click', clearSearch);
-            keywordInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    performSearch();
-                }
-            });
-            
-            // 拖放功能
-            dropArea.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                dropArea.style.borderColor = '#3498db';
-            });
-            
-            dropArea.addEventListener('dragleave', () => {
-                dropArea.style.borderColor = '#ddd';
-            });
-            
-            dropArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropArea.style.borderColor = '#ddd';
-                
-                if (e.dataTransfer.files.length) {
-                    fileInput.files = e.dataTransfer.files;
-                    handleFileUpload();
-                }
-            });
-            
-            // 选择器事件监听
-            stepSelector.addEventListener('change', function() {
-                updateSampleSelector();
-                updateDisplay();
-            });
-            modeSelector.addEventListener('change', updateSampleSelector);
-            sampleSelector.addEventListener('change', updateDisplay);
-            
-            // 标签页搜索相关元素
-            const tabKeywordInput = document.getElementById('tabKeywordInput');
-            const tabSearchBtn = document.getElementById('tabSearchBtn');
-            const tabClearSearchBtn = document.getElementById('tabClearSearchBtn');
-            const tabResultsContainer = document.getElementById('tabResultsContainer');
-            const searchTab = document.getElementById('searchTab');
-            
-            // 标签页搜索相关事件监听
-            tabSearchBtn.addEventListener('click', function() {
-                const keyword = tabKeywordInput.value.trim();
-                performTabSearch(keyword);
-            });
-            
-            tabClearSearchBtn.addEventListener('click', function() {
-                tabKeywordInput.value = '';
-                tabResultsContainer.innerHTML = '';
-            });
-            
-            tabKeywordInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    const keyword = tabKeywordInput.value.trim();
-                    performTabSearch(keyword);
-                }
-            });
-            
-            // 标签页切换
-            tabButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    tabButtons.forEach(btn => btn.classList.remove('active'));
-                    button.classList.add('active');
-                    
-                    const tab = button.getAttribute('data-tab');
-                    if (tab === 'content') {
-                        contentTab.classList.remove('hidden');
-                        metricsTab.classList.add('hidden');
-                        searchTab.classList.add('hidden');
-                    } else if (tab === 'metrics') {
-                        contentTab.classList.add('hidden');
-                        metricsTab.classList.remove('hidden');
-                        searchTab.classList.add('hidden');
-                        updateMetricsChart();
-                    } else if (tab === 'search') {
-                        contentTab.classList.add('hidden');
-                        metricsTab.classList.add('hidden');
-                        searchTab.classList.remove('hidden');
-                    }
-                });
-            });
-            
-            // 处理文件上传
-            function handleFileUpload() {
-                const file = fileInput.files[0];
-                if (!file) return;
-                
-                // 检查文件类型
-                if (!file.name.endsWith('.log')) {
-                    showStatus('请上传.log格式的文件', 'error');
-                    return;
-                }
-                
-                // 显示加载状态
-                loading.style.display = 'block';
-                logAnalysis.classList.add('hidden');
-                statusMessage.classList.add('hidden');
-                
-                // 读取文件
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        parseLogFile(e.target.result);
-                        loading.style.display = 'none';
-                        logAnalysis.classList.remove('hidden');
-                        searchSection.classList.remove('hidden');
-                        showStatus(`成功解析日志文件: ${file.name}`, 'success');
-                    } catch (error) {
-                        loading.style.display = 'none';
-                        showStatus(`解析文件时出错: ${error.message}`, 'error');
-                        console.error(error);
-                    }
-                };
-                reader.onerror = function() {
-                    loading.style.display = 'none';
-                    showStatus('读取文件时出错', 'error');
-                };
-                reader.readAsText(file);
+            const tab = button.getAttribute('data-tab');
+            if (tab === 'content') {
+                contentTab.classList.remove('hidden');
+                metricsTab.classList.add('hidden');
+                searchTab.classList.add('hidden');
+            } else if (tab === 'metrics') {
+                contentTab.classList.add('hidden');
+                metricsTab.classList.remove('hidden');
+                searchTab.classList.add('hidden');
+                updateMetricsChart();
+            } else if (tab === 'search') {
+                contentTab.classList.add('hidden');
+                metricsTab.classList.add('hidden');
+                searchTab.classList.remove('hidden');
             }
-            
-            // 解析日志文件
-            function parseLogFile(content) {
-                // 重置数据
-                logData = {
-                    steps: {},
-                    metrics: [],
-                    searchResults: []
-                };
-                
-                // 按行分割日志
-                const lines = content.split('\n');
-                
-                let currentStep = null;
-                let currentMode = null;
-                let currentSample = null;
-                let currentContent = '';
-                
-                // 为调试添加日志计数器
-                let trainSamples = 0;
-                let evalSamples = 0;
-                
-                // 遍历每一行
-                for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i];
-                    // 检测step行
-                    if (line.startsWith('step:')) {
-                        // 如果有当前处理的样本，先保存它
-                        if (currentStep !== null && currentMode && currentSample) {
-                            logData.steps[currentStep][currentMode][currentSample] = currentContent;
-                        }
-                        
-                        const stepMatch = line.match(/step:(\d+)/);
-                        if (stepMatch) {
-                            currentStep = parseInt(stepMatch[1]);
-                            
-                            // 初始化step数据结构（如果不存在）
-                            if (!logData.steps[currentStep]) {
-                                logData.steps[currentStep] = {
-                                    train: {},
-                                    eval: {}
-                                };
-                            }
-                            
-                            // 提取metrics
-                            const metricsMatches = line.match(/val\/[\w_-]+\/[\w_-]+:[\d.nan-]+/g);
-                            if (metricsMatches) {
-                                metricsMatches.forEach(metric => {
-                                    const [key, value] = metric.split(':');
-                                    let numValue = parseFloat(value);
-                                    if (!isNaN(numValue)) {
-                                        logData.metrics.push({
-                                            step: currentStep,
-                                            key,
-                                            value: numValue
-                                        });
-                                    }
-                                });
-                            }
-                            
-                            // 重置当前模式和样本，因为新的step开始了
-                            currentMode = null;
-                            currentSample = null;
-                            currentContent = '';
-                        }
-                    }
-                    // 检测训练样本
-                    else if (line.includes('Processing New Sample for Train')) {
-                        const sampleMatch = line.match(/Train\s+(\d+)/);
-                        if (sampleMatch) {
-                            // 保存之前的样本（如果有）
-                            if (currentStep !== null && currentMode && currentSample) {
-                                logData.steps[currentStep][currentMode][currentSample] = currentContent;
-                            }
-                            
-                            currentMode = 'train';
-                            currentSample = parseInt(sampleMatch[1]);
-                            currentContent = line + '\n';
-                            trainSamples++;
-                        }
-                    }
-                    // 检测评估样本
-                    else if (line.includes('Processing New Sample for Evaluation')) {
-                        const sampleMatch = line.match(/Evaluation\s+(\d+)/);
-                        if (sampleMatch) {
-                            // 保存之前的样本（如果有）
-                            if (currentStep !== null && currentMode && currentSample) {
-                                logData.steps[currentStep][currentMode][currentSample] = currentContent;
-                            }
-                            
-                            currentMode = 'eval';
-                            currentSample = parseInt(sampleMatch[1]);
-                            currentContent = line + '\n';
-                            evalSamples++;
-                        }
-                    }
-                        // 添加内容到当前样本
-                    else if (currentStep !== null && currentMode && currentSample) {
-                        currentContent += line + '\n';
-                    }
-                }
-                
-                // 保存最后一个样本
+        });
+    });
+    
+    // 处理文件上传
+    function handleFileUpload() {
+        const file = fileInput.files[0];
+        if (!file) return;
+        
+        // 检查文件类型
+        if (!file.name.endsWith('.log')) {
+            showStatus('请上传.log格式的文件', 'error');
+            return;
+        }
+        
+        // 显示加载状态
+        loading.style.display = 'block';
+        logAnalysis.classList.add('hidden');
+        statusMessage.classList.add('hidden');
+        
+        // 读取文件
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                parseLogFile(e.target.result);
+                loading.style.display = 'none';
+                logAnalysis.classList.remove('hidden');
+                searchSection.classList.remove('hidden');
+                showStatus(`成功解析日志文件: ${file.name}`, 'success');
+            } catch (error) {
+                loading.style.display = 'none';
+                showStatus(`解析文件时出错: ${error.message}`, 'error');
+                console.error(error);
+            }
+        };
+        reader.onerror = function() {
+            loading.style.display = 'none';
+            showStatus('读取文件时出错', 'error');
+        };
+        reader.readAsText(file);
+    }
+    
+    // 解析日志文件
+    function parseLogFile(content) {
+        // 重置数据
+        logData = {
+            steps: {},
+            metrics: [],
+            searchResults: []
+        };
+        
+        // 按行分割日志
+        const lines = content.split('\n');
+        
+        let currentStep = null;
+        let currentMode = null;
+        let currentSample = null;
+        let currentContent = '';
+        
+        // 为调试添加日志计数器
+        let trainSamples = 0;
+        let evalSamples = 0;
+        
+        // 遍历每一行
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            // 检测step行
+            if (line.startsWith('step:')) {
+                // 如果有当前处理的样本，先保存它
                 if (currentStep !== null && currentMode && currentSample) {
                     logData.steps[currentStep][currentMode][currentSample] = currentContent;
                 }
                 
-                // 更新UI
-                updateStepSelector();
-                updateSampleSelector();
-                updateDisplay();
-                
-                // 显示日志信息
-                const stepCount = Object.keys(logData.steps).length;
-                logInfo.textContent = `共解析 ${stepCount} 个步骤，${trainSamples} 个训练样本，${evalSamples} 个评估样本`;
-            }
-            
-            // 更新步骤选择器
-            function updateStepSelector() {
-                stepSelector.innerHTML = '';
-                const steps = Object.keys(logData.steps).sort((a, b) => parseInt(a) - parseInt(b));
-                
-                steps.forEach(step => {
-                    const option = document.createElement('option');
-                    option.value = step;
-                    option.textContent = `Step: ${step}`;
-                    stepSelector.appendChild(option);
-                });
-                
-                // 如果有步骤，选择第一个
-                if (steps.length > 0) {
-                    stepSelector.value = steps[0];
-                }
-            }
-            
-            // 更新样本选择器
-            function updateSampleSelector() {
-                sampleSelector.innerHTML = '';
-                
-                const step = stepSelector.value;
-                const mode = modeSelector.value;
-                
-                if (step && logData.steps[step] && logData.steps[step][mode]) {
-                    const samples = Object.keys(logData.steps[step][mode]).sort((a, b) => parseInt(a) - parseInt(b));
+                const stepMatch = line.match(/step:(\d+)/);
+                if (stepMatch) {
+                    currentStep = parseInt(stepMatch[1]);
                     
-                    samples.forEach(sample => {
-                        const option = document.createElement('option');
-                        option.value = sample;
-                        option.textContent = `${mode === 'train' ? 'Train' : 'Eval'} ${sample}`;
-                        sampleSelector.appendChild(option);
-                    });
+                    // 初始化step数据结构（如果不存在）
+                    if (!logData.steps[currentStep]) {
+                        logData.steps[currentStep] = {
+                            train: {},
+                            eval: {}
+                        };
+                    }
                     
-                    // 如果有样本，选择第一个
-                    if (samples.length > 0) {
-                        sampleSelector.value = samples[0];
-                    }
-                }
-                
-                updateDisplay();
-            }
-            
-            // 更新显示内容
-            function updateDisplay() {
-                const step = stepSelector.value;
-                const mode = modeSelector.value;
-                const sample = sampleSelector.value;
-                
-                if (step && mode && sample && 
-                    logData.steps[step] && 
-                    logData.steps[step][mode] && 
-                    logData.steps[step][mode][sample]) {
-                    contentDisplay.textContent = logData.steps[step][mode][sample];
-                } else {
-                    contentDisplay.textContent = '没有找到相关日志内容';
-                }
-            }
-            
-            // 更新指标图表
-            function updateMetricsChart() {
-                const currentStep = stepSelector.value;
-                
-                // 如果没有选择step或step不存在，则不更新图表
-                if (!currentStep || !logData.steps[currentStep]) {
-                    return;
-                }
-                
-                // 过滤指标，只显示当前步骤的指标
-                const stepMetrics = logData.metrics.filter(m => m.step.toString() === currentStep);
-                
-                // 按指标名称分组
-                const metricsByKey = {};
-                stepMetrics.forEach(metric => {
-                    const key = metric.key;
-                    if (!metricsByKey[key]) {
-                        metricsByKey[key] = [];
-                    }
-                    metricsByKey[key].push(metric.value);
-                });
-                
-                // 创建数据集
-                const datasets = [];
-                const labels = Object.keys(metricsByKey);
-                const values = labels.map(label => metricsByKey[label][0] || 0);
-                
-                const backgroundColors = labels.map((_, i) => {
-                    const hue = (i * 137) % 360; // 使用黄金角来分配颜色
-                    return `hsla(${hue}, 70%, 60%, 0.6)`;
-                });
-                
-                // 销毁现有图表（如果有）
-                if (metricsChart) {
-                    metricsChart.destroy();
-                }
-                
-                // 创建新图表
-                const ctx = document.getElementById('metricsChart').getContext('2d');
-                metricsChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: `Step ${currentStep} 指标`,
-                            data: values,
-                            backgroundColor: backgroundColors,
-                            borderColor: backgroundColors.map(color => color.replace('0.6', '1')),
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: false
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    title: function(tooltipItems) {
-                                        return tooltipItems[0].label;
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: false
-                            },
-                            x: {
-                                ticks: {
-                                    maxRotation: 90,
-                                    minRotation: 45
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-            
-            // 执行关键词搜索（主搜索区域）
-            function performSearch() {
-                const keyword = keywordInput.value.trim();
-                if (!keyword) {
-                    showStatus('请输入搜索关键词', 'error');
-                    return;
-                }
-                
-                doSearch(keyword, resultsContainer);
-            }
-            
-            // 执行标签页关键词搜索
-            function performTabSearch(keyword) {
-                if (!keyword) {
-                    showStatus('请输入搜索关键词', 'error');
-                    return;
-                }
-                
-                doSearch(keyword, tabResultsContainer);
-            }
-            
-            // 执行搜索的通用函数
-            function doSearch(keyword, containerElement) {
-                containerElement.innerHTML = '';
-                logData.searchResults = [];
-                
-                // 显示加载状态
-                containerElement.innerHTML = '<div class="loading-spinner"></div><p>正在搜索...</p>';
-                
-                // 使用setTimeout来避免UI阻塞
-                setTimeout(() => {
-                    // 遍历所有steps和样本
-                    const steps = Object.keys(logData.steps);
-                    let totalMatches = 0;
-                    
-                    for (const step of steps) {
-                        // 遍历train样本
-                        const trainSamples = Object.keys(logData.steps[step].train);
-                        for (const sample of trainSamples) {
-                            const content = logData.steps[step].train[sample];
-                            if (content.toLowerCase().includes(keyword.toLowerCase())) {
-                                logData.searchResults.push({
-                                    step: step,
-                                    mode: 'train',
-                                    sample: sample,
-                                    content: content,
-                                    keyword: keyword
+                    // 提取metrics
+                    const metricsMatches = line.match(/val\/[\w_-]+\/[\w_-]+:[\d.nan-]+/g);
+                    if (metricsMatches) {
+                        metricsMatches.forEach(metric => {
+                            const [key, value] = metric.split(':');
+                            let numValue = parseFloat(value);
+                            if (!isNaN(numValue)) {
+                                logData.metrics.push({
+                                    step: currentStep,
+                                    key,
+                                    value: numValue
                                 });
-                                totalMatches++;
-                            }
-                        }
-                        
-                        // 遍历eval样本
-                        const evalSamples = Object.keys(logData.steps[step].eval);
-                        for (const sample of evalSamples) {
-                            const content = logData.steps[step].eval[sample];
-                            if (content.toLowerCase().includes(keyword.toLowerCase())) {
-                                logData.searchResults.push({
-                                    step: step,
-                                    mode: 'eval',
-                                    sample: sample,
-                                    content: content,
-                                    keyword: keyword
-                                });
-                                totalMatches++;
-                            }
-                        }
-                    }
-                    
-                    // 显示搜索结果
-                    displaySearchResults(totalMatches, keyword, containerElement);
-                }, 10);
-            }
-            
-            // 显示搜索结果
-            function displaySearchResults(totalMatches, keyword, containerElement) {
-                containerElement.innerHTML = '';
-                
-                if (totalMatches === 0) {
-                    containerElement.innerHTML = `<p>未找到包含关键词 <strong>"${keyword}"</strong> 的样本</p>`;
-                    return;
-                }
-                
-                // 为每个结果创建元素
-                logData.searchResults.forEach((result, index) => {
-                    const resultItem = document.createElement('div');
-                    resultItem.className = 'result-item';
-                    
-                    // 创建结果头部信息（包含位置信息）
-                    const resultHeader = document.createElement('div');
-                    resultHeader.className = 'result-header';
-                    resultHeader.innerHTML = `
-                        <span>结果 #${index + 1}</span>
-                        <span class="result-location">Step: ${result.step} | ${result.mode === 'train' ? 'Train' : 'Evaluation'} ${result.sample}</span>
-                    `;
-                    
-                    // 创建包含关键词的内容片段
-                    const resultContent = document.createElement('div');
-                    resultContent.className = 'result-content';
-                    
-                    // 查找关键词在内容中的位置
-                    const keywordLower = keyword.toLowerCase();
-                    const contentLower = result.content.toLowerCase();
-                    const keywordIndex = contentLower.indexOf(keywordLower);
-                    
-                    // 提取关键词周围的上下文（前后各100个字符）
-                    const contextStart = Math.max(0, keywordIndex - 100);
-                    const contextEnd = Math.min(result.content.length, keywordIndex + keyword.length + 100);
-                    let contextContent = result.content.substring(contextStart, contextEnd);
-                    
-                    // 如果不是从开头显示，添加省略号
-                    if (contextStart > 0) {
-                        contextContent = '...' + contextContent;
-                    }
-                    
-                    // 如果不是显示到结尾，添加省略号
-                    if (contextEnd < result.content.length) {
-                        contextContent += '...';
-                    }
-                    
-                    // 高亮关键词
-                    const highlightedContent = highlightKeyword(contextContent, keyword);
-                    resultContent.innerHTML = highlightedContent;
-                    
-                    // 创建操作按钮
-                    const buttonsDiv = document.createElement('div');
-                    buttonsDiv.className = 'result-buttons';
-                    
-                    // 展开/收起按钮
-                    const expandBtn = document.createElement('button');
-                    expandBtn.className = 'expand-btn';
-                    expandBtn.textContent = '展开全文';
-                    expandBtn.addEventListener('click', function() {
-                        if (resultContent.classList.contains('result-content-full')) {
-                            resultContent.classList.remove('result-content-full');
-                            resultContent.innerHTML = highlightedContent;
-                            expandBtn.textContent = '展开全文';
-                        } else {
-                            resultContent.classList.add('result-content-full');
-                            resultContent.innerHTML = highlightKeyword(result.content, keyword);
-                            expandBtn.textContent = '收起';
-                        }
-                    });
-                    
-                    // 查看按钮
-                    const viewBtn = document.createElement('button');
-                    viewBtn.className = 'view-btn';
-                    viewBtn.textContent = '在主视图中查看';
-                    viewBtn.addEventListener('click', function() {
-                        // 设置选择器值
-                        stepSelector.value = result.step;
-                        modeSelector.value = result.mode;
-                        
-                        // 更新样本选择器并选择对应的样本
-                        updateSampleSelector();
-                        sampleSelector.value = result.sample;
-                        
-                        // 更新显示
-                        updateDisplay();
-                        
-                        // 切换到内容标签页
-                        tabButtons.forEach(btn => {
-                            if (btn.getAttribute('data-tab') === 'content') {
-                                btn.click();
                             }
                         });
-                        
-                        // 滚动到顶部
-                        logAnalysis.scrollIntoView({ behavior: 'smooth' });
-                    });
+                    }
                     
-                    // 添加按钮
-                    buttonsDiv.appendChild(expandBtn);
-                    buttonsDiv.appendChild(viewBtn);
-                    
-                    // 组装结果项
-                    resultItem.appendChild(resultHeader);
-                    resultItem.appendChild(resultContent);
-                    resultItem.appendChild(buttonsDiv);
-                    
-                    // 添加到容器
-                    containerElement.appendChild(resultItem);
-                });
-                
-                // 显示匹配数量
-                const resultSummary = document.createElement('p');
-                resultSummary.innerHTML = `共找到 <strong>${totalMatches}</strong> 个包含关键词 <strong>"${keyword}"</strong> 的样本`;
-                containerElement.insertBefore(resultSummary, containerElement.firstChild);
-            }
-            
-            // 高亮关键词
-            function highlightKeyword(text, keyword) {
-                if (!keyword) return text;
-                
-                const keywordLower = keyword.toLowerCase();
-                const textLower = text.toLowerCase();
-                
-                let result = '';
-                let lastIndex = 0;
-                
-                // 查找所有匹配位置并添加高亮
-                let index = textLower.indexOf(keywordLower, lastIndex);
-                while (index !== -1) {
-                    // 添加匹配前的文本
-                    result += escapeHtml(text.substring(lastIndex, index));
-                    
-                    // 添加高亮的关键词
-                    result += `<span class="highlight">${escapeHtml(text.substring(index, index + keyword.length))}</span>`;
-                    
-                    // 更新索引
-                    lastIndex = index + keyword.length;
-                    index = textLower.indexOf(keywordLower, lastIndex);
+                    // 重置当前模式和样本，因为新的step开始了
+                    currentMode = null;
+                    currentSample = null;
+                    currentContent = '';
                 }
-                
-                // 添加剩余文本
-                result += escapeHtml(text.substring(lastIndex));
-                
-                return result;
             }
-            
-            // HTML转义
-            function escapeHtml(unsafe) {
-                return unsafe
-                    .replace(/&/g, "&amp;")
-                    .replace(/</g, "&lt;")
-                    .replace(/>/g, "&gt;")
-                    .replace(/"/g, "&quot;")
-                    .replace(/'/g, "&#039;");
+            // 检测训练样本
+            else if (line.includes('Processing New Sample for Train')) {
+                const sampleMatch = line.match(/Train\s+(\d+)/);
+                if (sampleMatch) {
+                    // 保存之前的样本（如果有）
+                    if (currentStep !== null && currentMode && currentSample) {
+                        logData.steps[currentStep][currentMode][currentSample] = currentContent;
+                    }
+                    
+                    currentMode = 'train';
+                    currentSample = parseInt(sampleMatch[1]);
+                    currentContent = line + '\n';
+                    trainSamples++;
+                }
             }
-            
-            // 清除搜索
-            function clearSearch() {
-                keywordInput.value = '';
-                resultsContainer.innerHTML = '';
-                logData.searchResults = [];
+            // 检测评估样本
+            else if (line.includes('Processing New Sample for Evaluation')) {
+                const sampleMatch = line.match(/Evaluation\s+(\d+)/);
+                if (sampleMatch) {
+                    // 保存之前的样本（如果有）
+                    if (currentStep !== null && currentMode && currentSample) {
+                        logData.steps[currentStep][currentMode][currentSample] = currentContent;
+                    }
+                    
+                    currentMode = 'eval';
+                    currentSample = parseInt(sampleMatch[1]);
+                    currentContent = line + '\n';
+                    evalSamples++;
+                }
             }
+                // 添加内容到当前样本
+            else if (currentStep !== null && currentMode && currentSample) {
+                currentContent += line + '\n';
+            }
+        }
+        
+        // 保存最后一个样本
+        if (currentStep !== null && currentMode && currentSample) {
+            logData.steps[currentStep][currentMode][currentSample] = currentContent;
+        }
+        
+        // 更新UI
+        updateStepSelector();
+        updateSampleSelector();
+        updateDisplay();
+        
+        // 显示日志信息
+        const stepCount = Object.keys(logData.steps).length;
+        logInfo.textContent = `共解析 ${stepCount} 个步骤，${trainSamples} 个训练样本，${evalSamples} 个评估样本`;
+    }
+    
+    // 更新步骤选择器
+    function updateStepSelector() {
+        stepSelector.innerHTML = '';
+        const steps = Object.keys(logData.steps).sort((a, b) => parseInt(a) - parseInt(b));
+        
+        steps.forEach(step => {
+            const option = document.createElement('option');
+            option.value = step;
+            option.textContent = `Step: ${step}`;
+            stepSelector.appendChild(option);
+        });
+        
+        // 如果有步骤，选择第一个
+        if (steps.length > 0) {
+            stepSelector.value = steps[0];
+        }
+    }
+    
+    // 更新样本选择器
+    function updateSampleSelector() {
+        sampleSelector.innerHTML = '';
+        
+        const step = stepSelector.value;
+        const mode = modeSelector.value;
+        
+        if (step && logData.steps[step] && logData.steps[step][mode]) {
+            const samples = Object.keys(logData.steps[step][mode]).sort((a, b) => parseInt(a) - parseInt(b));
             
-            // 显示状态消息
-            function showStatus(message, type) {
-                statusMessage.textContent = message;
-                statusMessage.className = 'status ' + type;
-                statusMessage.classList.remove('hidden');
-                
-                // 3秒后自动隐藏成功消息
-                if (type === 'success') {
-                    setTimeout(() => {
-                        statusMessage.classList.add('hidden');
-                    }, 3000);
+            samples.forEach(sample => {
+                const option = document.createElement('option');
+                option.value = sample;
+                option.textContent = `${mode === 'train' ? 'Train' : 'Eval'} ${sample}`;
+                sampleSelector.appendChild(option);
+            });
+            
+            // 如果有样本，选择第一个
+            if (samples.length > 0) {
+                sampleSelector.value = samples[0];
+            }
+        }
+        
+        updateDisplay();
+    }
+    
+    // 更新显示内容
+    function updateDisplay() {
+        const step = stepSelector.value;
+        const mode = modeSelector.value;
+        const sample = sampleSelector.value;
+        
+        if (step && mode && sample && 
+            logData.steps[step] && 
+            logData.steps[step][mode] && 
+            logData.steps[step][mode][sample]) {
+            contentDisplay.textContent = logData.steps[step][mode][sample];
+        } else {
+            contentDisplay.textContent = '没有找到相关日志内容';
+        }
+    }
+    
+    // 更新指标图表
+    function updateMetricsChart() {
+        const currentStep = stepSelector.value;
+        
+        // 如果没有选择step或step不存在，则不更新图表
+        if (!currentStep || !logData.steps[currentStep]) {
+            return;
+        }
+        
+        // 过滤指标，只显示当前步骤的指标
+        const stepMetrics = logData.metrics.filter(m => m.step.toString() === currentStep);
+        
+        // 按指标名称分组
+        const metricsByKey = {};
+        stepMetrics.forEach(metric => {
+            const key = metric.key;
+            if (!metricsByKey[key]) {
+                metricsByKey[key] = [];
+            }
+            metricsByKey[key].push(metric.value);
+        });
+        
+        // 创建数据集
+        const datasets = [];
+        const labels = Object.keys(metricsByKey);
+        const values = labels.map(label => metricsByKey[label][0] || 0);
+        
+        const backgroundColors = labels.map((_, i) => {
+            const hue = (i * 137) % 360; // 使用黄金角来分配颜色
+            return `hsla(${hue}, 70%, 60%, 0.6)`;
+        });
+        
+        // 销毁现有图表（如果有）
+        if (metricsChart) {
+            metricsChart.destroy();
+        }
+        
+        // 创建新图表
+        const ctx = document.getElementById('metricsChart').getContext('2d');
+        metricsChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: `Step ${currentStep} 指标`,
+                    data: values,
+                    backgroundColor: backgroundColors,
+                    borderColor: backgroundColors.map(color => color.replace('0.6', '1')),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                return tooltipItems[0].label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 90,
+                            minRotation: 45
+                        }
+                    }
                 }
             }
         });
-    </script>
+    }
+    
+    // 执行关键词搜索（主搜索区域）
+    function performSearch() {
+        const keyword = keywordInput.value.trim();
+        if (!keyword) {
+            showStatus('请输入搜索关键词', 'error');
+            return;
+        }
+        
+        const onlyResponse = onlyResponseCheckbox.checked;
+        doSearch(keyword, resultsContainer, onlyResponse);
+    }
+    
+    // 执行标签页关键词搜索
+    function performTabSearch(keyword) {
+        if (!keyword) {
+            showStatus('请输入搜索关键词', 'error');
+            return;
+        }
+        
+        const onlyResponse = tabOnlyResponseCheckbox.checked;
+        doSearch(keyword, tabResultsContainer, onlyResponse);
+    }
+    
+    // 执行搜索的通用函数
+    function doSearch(keyword, containerElement, onlyResponseMode = false) {
+        containerElement.innerHTML = '';
+        logData.searchResults = [];
+        
+        // 显示加载状态
+        containerElement.innerHTML = '<div class="loading-spinner"></div><p>正在搜索...</p>';
+        
+        // 使用setTimeout来避免UI阻塞
+        setTimeout(() => {
+            // 遍历所有steps和样本
+            const steps = Object.keys(logData.steps);
+            let totalMatches = 0;
+            
+            for (const step of steps) {
+                // 遍历train样本
+                const trainSamples = Object.keys(logData.steps[step].train);
+                for (const sample of trainSamples) {
+                    const content = logData.steps[step].train[sample];
+                    
+                    // 如果只搜索响应部分，先提取响应
+                    let searchContent = content;
+                    if (onlyResponseMode) {
+                        searchContent = extractModelResponse(content);
+                    }
+                    
+                    if (searchContent.toLowerCase().includes(keyword.toLowerCase())) {
+                        logData.searchResults.push({
+                            step: step,
+                            mode: 'train',
+                            sample: sample,
+                            content: content,
+                            searchContent: searchContent,
+                            keyword: keyword,
+                            onlyResponse: onlyResponseMode
+                        });
+                        totalMatches++;
+                    }
+                }
+                
+                // 遍历eval样本
+                const evalSamples = Object.keys(logData.steps[step].eval);
+                for (const sample of evalSamples) {
+                    const content = logData.steps[step].eval[sample];
+                    
+                    // 如果只搜索响应部分，先提取响应
+                    let searchContent = content;
+                    if (onlyResponseMode) {
+                        searchContent = extractModelResponse(content);
+                    }
+                    
+                    if (searchContent.toLowerCase().includes(keyword.toLowerCase())) {
+                        logData.searchResults.push({
+                            step: step,
+                            mode: 'eval',
+                            sample: sample,
+                            content: content,
+                            searchContent: searchContent,
+                            keyword: keyword,
+                            onlyResponse: onlyResponseMode
+                        });
+                        totalMatches++;
+                    }
+                }
+            }
+            
+            // 显示搜索结果
+            displaySearchResults(totalMatches, keyword, containerElement, onlyResponseMode);
+        }, 10);
+    }
+    
+    // 从日志内容中提取模型响应部分
+    function extractModelResponse(content) {
+        // 查找[Model Response]标记
+        const responseMarker = "[Model Response]";
+        const markerIndex = content.indexOf(responseMarker);
+        
+        if (markerIndex === -1) {
+            // 尝试其他可能的响应标记
+            const alternativeMarkers = ["[Assistant]", "[Response]", "[Output]"];
+            for (const marker of alternativeMarkers) {
+                const altIndex = content.indexOf(marker);
+                if (altIndex !== -1) {
+                    return content.substring(altIndex + marker.length);
+                }
+            }
+            return ""; // 找不到任何响应标记
+        }
+        
+        return content.substring(markerIndex + responseMarker.length);
+    }
+    
+    // 显示搜索结果
+    function displaySearchResults(totalMatches, keyword, containerElement, onlyResponseMode = false) {
+        containerElement.innerHTML = '';
+        
+        if (totalMatches === 0) {
+            containerElement.innerHTML = `<p>未找到包含关键词 <strong>"${keyword}"</strong> 的${onlyResponseMode ? '模型响应' : '样本'}</p>`;
+            return;
+        }
+        
+        // 为每个结果创建元素
+        logData.searchResults.forEach((result, index) => {
+            const resultItem = document.createElement('div');
+            resultItem.className = 'result-item';
+            
+            // 创建结果头部信息（包含位置信息）
+            const resultHeader = document.createElement('div');
+            resultHeader.className = 'result-header';
+            resultHeader.innerHTML = `
+                <span>结果 #${index + 1}</span>
+                <span class="result-location">Step: ${result.step} | ${result.mode === 'train' ? 'Train' : 'Evaluation'} ${result.sample}</span>
+            `;
+            
+            // 创建包含关键词的内容片段
+            const resultContent = document.createElement('div');
+            resultContent.className = 'result-content';
+            
+            // 确定要展示和高亮的内容
+            const displayContent = result.onlyResponse ? result.searchContent : result.content;
+            
+            // 查找关键词在内容中的位置
+            const keywordLower = keyword.toLowerCase();
+            const contentLower = displayContent.toLowerCase();
+            const keywordIndex = contentLower.indexOf(keywordLower);
+            
+            // 提取关键词周围的上下文（前后各100个字符）
+            const contextStart = Math.max(0, keywordIndex - 100);
+            const contextEnd = Math.min(displayContent.length, keywordIndex + keyword.length + 100);
+            let contextContent = displayContent.substring(contextStart, contextEnd);
+            
+            // 如果不是从开头显示，添加省略号
+            if (contextStart > 0) {
+                contextContent = '...' + contextContent;
+            }
+            
+            // 如果不是显示到结尾，添加省略号
+            if (contextEnd < displayContent.length) {
+                contextContent += '...';
+            }
+            
+            // 高亮关键词
+            const highlightedContent = highlightKeyword(contextContent, keyword);
+            resultContent.innerHTML = highlightedContent;
+            
+            // 创建操作按钮
+            const buttonsDiv = document.createElement('div');
+            buttonsDiv.className = 'result-buttons';
+            
+            // 展开/收起按钮
+            const expandBtn = document.createElement('button');
+            expandBtn.className = 'expand-btn';
+            expandBtn.textContent = '展开全文';
+            expandBtn.addEventListener('click', function() {
+                if (resultContent.classList.contains('result-content-full')) {
+                    resultContent.classList.remove('result-content-full');
+                    resultContent.innerHTML = highlightedContent;
+                    expandBtn.textContent = '展开全文';
+                } else {
+                    resultContent.classList.add('result-content-full');
+                    resultContent.innerHTML = highlightKeyword(displayContent, keyword);
+                    expandBtn.textContent = '收起';
+                }
+            });
+            
+            // 查看按钮
+            const viewBtn = document.createElement('button');
+            viewBtn.className = 'view-btn';
+            viewBtn.textContent = '在主视图中查看';
+            viewBtn.addEventListener('click', function() {
+                // 设置选择器值
+                stepSelector.value = result.step;
+                modeSelector.value = result.mode;
+                
+                // 更新样本选择器并选择对应的样本
+                updateSampleSelector();
+                sampleSelector.value = result.sample;
+                
+                // 更新显示
+                updateDisplay();
+                
+                // 切换到内容标签页
+                tabButtons.forEach(btn => {
+                    if (btn.getAttribute('data-tab') === 'content') {
+                        btn.click();
+                    }
+                });
+                
+                // 滚动到顶部
+                logAnalysis.scrollIntoView({ behavior: 'smooth' });
+            });
+            
+            // 添加按钮
+            buttonsDiv.appendChild(expandBtn);
+            buttonsDiv.appendChild(viewBtn);
+            
+            // 组装结果项
+            resultItem.appendChild(resultHeader);
+            resultItem.appendChild(resultContent);
+            resultItem.appendChild(buttonsDiv);
+            
+            // 添加到容器
+            containerElement.appendChild(resultItem);
+        });
+        
+        // 显示匹配数量
+        const resultSummary = document.createElement('p');
+        resultSummary.innerHTML = `共找到 <strong>${totalMatches}</strong> 个包含关键词 <strong>"${keyword}"</strong> 的${onlyResponseMode ? '模型响应' : '样本'}`;
+        containerElement.insertBefore(resultSummary, containerElement.firstChild);
+    }
+    
+    // 高亮关键词
+    function highlightKeyword(text, keyword) {
+        if (!keyword) return text;
+        
+        const keywordLower = keyword.toLowerCase();
+        const textLower = text.toLowerCase();
+        
+        let result = '';
+        let lastIndex = 0;
+        
+        // 查找所有匹配位置并添加高亮
+        let index = textLower.indexOf(keywordLower, lastIndex);
+        while (index !== -1) {
+            // 添加匹配前的文本
+            result += escapeHtml(text.substring(lastIndex, index));
+            
+            // 添加高亮的关键词
+            result += `<span class="highlight">${escapeHtml(text.substring(index, index + keyword.length))}</span>`;
+            
+            // 更新索引
+            lastIndex = index + keyword.length;
+            index = textLower.indexOf(keywordLower, lastIndex);
+        }
+        
+        // 添加剩余文本
+        result += escapeHtml(text.substring(lastIndex));
+        
+        return result;
+    }
+    
+    // HTML转义
+    function escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+    
+    // 清除搜索
+    function clearSearch() {
+        keywordInput.value = '';
+        resultsContainer.innerHTML = '';
+        logData.searchResults = [];
+    }
+    
+    // 显示状态消息
+    function showStatus(message, type) {
+        statusMessage.textContent = message;
+        statusMessage.className = 'status ' + type;
+        statusMessage.classList.remove('hidden');
+        
+        // 3秒后自动隐藏成功消息
+        if (type === 'success') {
+            setTimeout(() => {
+                statusMessage.classList.add('hidden');
+            }, 3000);
+        }
+    }
+});
+</script>
 </body>
 </html>
